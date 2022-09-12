@@ -26,36 +26,51 @@ public class ScrapWebviewPlugin: CAPPlugin {
      */
     var webViewsDictionary: [String: WebViewRef] = [:]
     
-    private func addToWebViewsDict(id: String, webView: WKWebView) {
+    private func getWebViewReference(byKey key: String) -> WKWebView? {
+        guard webViewsDictionary.keys.contains(key),
+              let webViewRef = webViewsDictionary[key]
+        else {
+            return nil
+        }
+        
+        return webViewRef.webView
+    }
+    
+    private func addToWebViewsDict(withKey key: String, webView: WKWebView) {
         // If key is already present, do nothing.
-        guard !webViewsDictionary.keys.contains(id) else {
+        guard !webViewsDictionary.keys.contains(key) else {
             return
         }
         
-        webViewsDictionary[id] = WebViewRef(webView: webView)
+        webViewsDictionary[key] = WebViewRef(webView: webView)
     }
     
-    private func removeFromWebViewsDict(id: String) {
-        webViewsDictionary.removeValue(forKey: id)
+    private func removeFromWebViewsDict(forKey key: String) {
+        webViewsDictionary.removeValue(forKey: key)
     }
     
     
     // MARK: - Plugin public methods
     
     @objc public func create(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else {
+            call.reject("Error creating WebView: You must provide an ID.")
+            return
+        }
         
         // let userAgent = call.getString("userAgent", "");
         // let persistSession = call.getBool("persistSession", false);
-        // let id = call.getString("id", "");
+        // ✅ let id = call.getString("id", "");
         // let proxySettings = call.getObject("proxySettings");
         // let windowSettings = call.getObject("windowSettings");
         
         guard let webView = webView else {
-            print("ERROR - CANNOT LOAD: No existing webview.")
+            // TODO - Test case: Is this possible/ what is the fail condition?
+            print("ERROR: Cannot create webview: No base webview to use.")
             return
         }
         
-        // Log properties
+        // DEBUG: Log properties
         DispatchQueue.main.async {
             print("WebView Config object: \(webView.configuration)")
             print("Is visible: \(!webView.isHidden)")
@@ -70,8 +85,8 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         DispatchQueue.main.async {
             let testWebView = TestWebView(frame: webView.frame, configuration: WKWebViewConfiguration())
-            testWebView.id = "testing1"
-            self.addToWebViewsDict(id: testWebView.id!, webView: testWebView)
+            testWebView.id = id
+            self.addToWebViewsDict(withKey: id, webView: testWebView)
             
             webView.addSubview(testWebView)
         }
@@ -135,29 +150,45 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
     }
     
+    
+    /**
+     * This function must show the Web View with the given ID if invisible
+     */
     @objc public func show(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else {
+            call.reject("An 'id' parameter must be provided when calling 'show'")
+            return
+        }
         
-        // let id = call.getString("id", "");
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
         
-        /**
-         * This function must show the Web View with the given ID if invisible
-         */
-        
-        // @todo
+        DispatchQueue.main.async {
+            webView.isHidden = false
+        }
         
         call.resolve();
-        
     }
     
+    /**
+     * This function must hide the Web View with the given ID if visible
+     */
     @objc public func hide(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else {
+            call.reject("An 'id' parameter must be provided when calling 'hide'")
+            return
+        }
         
-        // let id = call.getString("id", "");
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
         
-        /**
-         * This function must hide the Web View with the given ID if visible
-         */
-        
-        // @todo
+        DispatchQueue.main.async {
+            webView.isHidden = false
+        }
         
         call.resolve();
         
