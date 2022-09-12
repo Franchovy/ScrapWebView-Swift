@@ -7,7 +7,6 @@
 
 import Foundation
 import Capacitor
-// MARK: Solution imports
 import WebKit
 
 @objc(ScrapWebviewPlugin)
@@ -19,12 +18,16 @@ public class ScrapWebviewPlugin: CAPPlugin {
      Container Type  for keeping weak references to WKWebWiew allowing safe access and
      deallocation by other processes.
      */
-    struct WebViewRef { weak var webView: WKWebView? }
+    struct WebViewRef {
+        weak var webView: WKWebView?
+    }
     
     /**
      Dictionary ID-to-WebViewReference storing (potentially deallocated) webviews by ID.
      */
     var webViewsDictionary: [String: WebViewRef] = [:]
+    
+    // TODO: Session / Process Pool Dictionary to persist data
     
     private func getWebViewReference(byKey key: String) -> WKWebView? {
         guard webViewsDictionary.keys.contains(key),
@@ -49,46 +52,55 @@ public class ScrapWebviewPlugin: CAPPlugin {
         webViewsDictionary.removeValue(forKey: key)
     }
     
-    
     // MARK: - Plugin public methods
     
     @objc public func create(_ call: CAPPluginCall) {
-        guard let id = call.getString("id") else {
-            call.reject("Error creating WebView: You must provide an ID.")
-            return
-        }
         
-        // let userAgent = call.getString("userAgent", "");
+        // Load call parameters
+        
+        let id = call.getString("id", "");
+        let shouldShow = call.getBool("show", true)
+        let userAgent = call.getString("userAgent", "");
+        let hasCloseHeader = call.getBool("closable", true)
         // let persistSession = call.getBool("persistSession", false);
-        // ✅ let id = call.getString("id", "");
         // let proxySettings = call.getObject("proxySettings");
         // let windowSettings = call.getObject("windowSettings");
         
-        guard let webView = webView else {
-            // TODO - Test case: Is this possible/ what is the fail condition?
-            print("ERROR: Cannot create webview: No base webview to use.")
+        // If webview with this key already exists, do nothing.
+        
+        if webViewsDictionary.keys.contains(id) {
             return
         }
         
-        // DEBUG: Log properties
-        DispatchQueue.main.async {
-            print("WebView Config object: \(webView.configuration)")
-            print("Is visible: \(!webView.isHidden)")
-            print("Preferences: \(webView.configuration.preferences)")
-            print("ProcessPool Configuration: \(webView.configuration.processPool)")
+        // Ensure base webview exists
+        // TODO: What is the fail condition?
+        
+        guard let baseWebView = webView else {
+            call.reject("ERROR CREATING WEBVIEW: Cannot find base webview")
+            return
         }
         
-        // User Agent
-        if let userAgent = call.getString("userAgent") {
+        // WebView Configuration
+        
+        let config = WKWebViewConfiguration()
+        
+        // TODO: Process Pool by ID
+        // TODO: Proxy Settings
+        // TODO: Window Settings
+        
+        // Create WebView and add to base WebView
+        
+        DispatchQueue.main.async {
+            // Instantiate WebView
+            let webView = TestWebView(frame: baseWebView.frame, configuration: config)
             webView.customUserAgent = userAgent
-        }
-        
-        DispatchQueue.main.async {
-            let testWebView = TestWebView(frame: webView.frame, configuration: WKWebViewConfiguration())
-            testWebView.id = id
-            self.addToWebViewsDict(withKey: id, webView: testWebView)
+            webView.isHidden = !shouldShow
             
-            webView.addSubview(testWebView)
+            // Add reference to dictionary
+            self.addToWebViewsDict(withKey: id, webView: webView)
+            
+            // Add to UI
+            baseWebView.addSubview(webView)
         }
         
         /**
@@ -187,7 +199,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         }
         
         DispatchQueue.main.async {
-            webView.isHidden = false
+            webView.isHidden = true
         }
         
         call.resolve();
