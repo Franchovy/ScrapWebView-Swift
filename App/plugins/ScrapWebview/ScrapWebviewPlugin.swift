@@ -66,13 +66,20 @@ public class ScrapWebviewPlugin: CAPPlugin {
      * If persistSession is true, the Web View must keep localStorage, cookies, etc... when destroyed, so
      * sessions on websites persist. If persistSession is false, all storage must be cleared on destroy.
      *
-     * If closable is true, the Web View must have a header with a close button when visible
      *
-     * If show is true, the Web View must be visible on creation (but can be hidden later)
-     * If show is false, the Web View must be invisible on creation (but can be shown later)
+     * windowSettings:
+     * If 'closable' is true, the Web View must have a header with a close button when visible
+     * If 'show' is true, the Web View must be visible on creation (but can be hidden later)
+     * If 'show' is false, the Web View must be invisible on creation (but can be shown later)
      *
      * If proxySettings is not null, the Web View must load pages through a proxy with the settings given.
      * If possible, the proxy auth must be invisible to the user and not show anything
+     * {
+     *   host: string;
+     *   port: number;
+     *   username: string;
+     *   password: string;
+     * }
      *
      * IMPORTANT : Multiple webviews must be able to run at the same time and execute Javascript, event if not visible
      * They must not be in a "sleeping" state.
