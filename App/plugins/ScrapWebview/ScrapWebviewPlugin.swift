@@ -215,7 +215,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         DispatchQueue.main.async {
             let currentUrl = webView.url;
             
-            call.resolve(["url": currentUrl ?? ""]);
+            call.resolve(["url": currentUrl?.absoluteString ?? ""]);
         }
     }
     
