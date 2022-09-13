@@ -132,17 +132,22 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
     }
     
+    /**
+     * This function must destroy the Web View with the given ID.
+     */
     @objc public func destroy(_ call: CAPPluginCall) {
+        let id = call.getString("id", "")
         
-        // let id = call.getString("id", "");
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
         
-        /**
-         * This function must destroy the Web View with the given ID.
-         */
-        
-        // @todo
-        
-        call.resolve();
+        removeFromWebViewsDict(forKey: id)
+        DispatchQueue.main.async {
+            webView.removeFromSuperview()
+            call.resolve();
+        }
         
     }
     
