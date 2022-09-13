@@ -200,6 +200,10 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
     }
     
+    
+    /**
+     * This function must return the current URL loaded in the Web View with the given ID
+     */
     @objc public func getUrl(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
@@ -207,10 +211,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
             call.reject("No WebView with id: '\(id)'")
             return
         }
-        
-        /**
-         * This function must return the current URL loaded in the Web View with the given ID
-         */
         
         DispatchQueue.main.async {
             let currentUrl = webView.url;
