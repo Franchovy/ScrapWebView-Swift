@@ -222,22 +222,44 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
     }
     
+    
+    /**
+     * This function must load the URL given in the Web View with the given ID
+     *
+     * If force is true, the URL must be loaded in any case
+     * If force is false, the URL must not be loaded if it's the current URL of the Web View
+     */
     @objc public func loadUrl(_ call: CAPPluginCall) {
         
-        // let id = call.getString("id", "");
-        // let newId = call.getString("url", "");
-        // let force = call.getBool("force", false);
+        let id = call.getString("id", "");
+        let shouldForce = call.getBool("force", false);
+        let urlStr = call.getString("url")
         
-        /**
-         * This function must load the URL given in the Web View with the given ID
-         *
-         * If force is true, the URL must be loaded in any case
-         * If force is false, the URL must not be loaded if it's the current URL of the Web View
-         */
+        guard urlStr != nil, let url = URL(string: urlStr!) else {
+            if urlStr == nil { call.reject("You must provide a url parameter for loadUrl: \(String(describing: urlStr))") }
+            else { call.reject("Invalid url parameter for loadUrl: \(String(describing: urlStr))") }
+            return
+        }
         
-        // @todo
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: \(id)")
+            return
+        }
         
-        call.resolve();
+        let urlRequest = URLRequest(url: url)
+        
+        DispatchQueue.main.async {
+            // Verify if url is the same.
+            // If so, proceed if force parameter is true
+            if webView.url == nil
+                || webView.url! != url
+                || shouldForce
+            {
+                webView.load(urlRequest)
+            }
+        }
+        
+        call.resolve()
         
     }
     
