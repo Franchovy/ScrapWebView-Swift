@@ -54,6 +54,29 @@ public class ScrapWebviewPlugin: CAPPlugin {
     
     // MARK: - Plugin public methods
     
+    /**
+     * This function must create a new Web View associated to a given ID.
+     * This ID is used in other function to do things with the Web View.
+     *
+     * If a Web View already exists, do nothing
+     * Multiple Web Views can be created
+     *
+     * If userAgent is not null, it must be used to load web pages of this Web View.
+     *
+     * If persistSession is true, the Web View must keep localStorage, cookies, etc... when destroyed, so
+     * sessions on websites persist. If persistSession is false, all storage must be cleared on destroy.
+     *
+     * If closable is true, the Web View must have a header with a close button when visible
+     *
+     * If show is true, the Web View must be visible on creation (but can be hidden later)
+     * If show is false, the Web View must be invisible on creation (but can be shown later)
+     *
+     * If proxySettings is not null, the Web View must load pages through a proxy with the settings given.
+     * If possible, the proxy auth must be invisible to the user and not show anything
+     *
+     * IMPORTANT : Multiple webviews must be able to run at the same time and execute Javascript, event if not visible
+     * They must not be in a "sleeping" state.
+     */
     @objc public func create(_ call: CAPPluginCall) {
         
         // Load call parameters
@@ -101,35 +124,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
             
             // Add to UI
             baseWebView.addSubview(webView)
+            
+            call.resolve();
         }
-        
-        /**
-         * This function must create a new Web View associated to a given ID.
-         * This ID is used in other function to do things with the Web View.
-         *
-         * If a Web View already exists, do nothing
-         * Multiple Web Views can be created
-         *
-         * If userAgent is not null, it must be used to load web pages of this Web View.
-         *
-         * If persistSession is true, the Web View must keep localStorage, cookies, etc... when destroyed, so
-         * sessions on websites persist. If persistSession is false, all storage must be cleared on destroy.
-         *
-         * If closable is true, the Web View must have a header with a close button when visible
-         *
-         * If show is true, the Web View must be visible on creation (but can be hidden later)
-         * If show is false, the Web View must be invisible on creation (but can be shown later)
-         *
-         * If proxySettings is not null, the Web View must load pages through a proxy with the settings given.
-         * If possible, the proxy auth must be invisible to the user and not show anything
-         *
-         * IMPORTANT : Multiple webviews must be able to run at the same time and execute Javascript, event if not visible
-         * They must not be in a "sleeping" state.
-         */
-        
-        // @todo
-        call.resolve();
-        
     }
     
     /**
@@ -148,7 +145,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
             webView.removeFromSuperview()
             call.resolve();
         }
-        
     }
     
     @objc public func replaceId(_ call: CAPPluginCall) {
@@ -181,9 +177,8 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         DispatchQueue.main.async {
             webView.isHidden = false
+            call.resolve();
         }
-        
-        call.resolve();
     }
     
     /**
@@ -199,10 +194,8 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         DispatchQueue.main.async {
             webView.isHidden = true
+            call.resolve();
         }
-        
-        call.resolve();
-        
     }
     
     
@@ -259,10 +252,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
             {
                 webView.load(urlRequest)
             }
+            
+            call.resolve()
         }
-        
-        call.resolve()
-        
     }
     
     @objc public func reloadPage(_ call: CAPPluginCall) {
@@ -277,9 +269,11 @@ public class ScrapWebviewPlugin: CAPPlugin {
          * This function must reload the page of the Web View with the given ID
          */
         
-        webView.reload()
-        
-        call.resolve();
+        DispatchQueue.main.async {
+            webView.reload()
+            
+            call.resolve();
+        }
     }
     
     @objc public func evaluateScript(_ call: CAPPluginCall) {
