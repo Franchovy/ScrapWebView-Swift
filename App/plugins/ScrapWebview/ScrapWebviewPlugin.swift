@@ -147,20 +147,28 @@ public class ScrapWebviewPlugin: CAPPlugin {
         }
     }
     
+    /**
+     * This function must replace the ID of a Web View with a newId
+     */
     @objc public func replaceId(_ call: CAPPluginCall) {
+        let id = call.getString("id", "")
         
-        // let id = call.getString("id", "");
-        // let newId = call.getString("new_id", "");
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
         
-        /**
-         * This function must replace the ID of a Web View with a newId
-         */
+        let newId = call.getString("new_id", "");
         
-        // @todo
+        // If ID hasn't changed, do nothing
+        if id == newId {
+            return
+        }
+        
+        removeFromWebViewsDict(forKey: id)
+        addToWebViewsDict(withKey: newId, webView: webView)
         
         call.resolve();
-        
-        
     }
     
     
@@ -257,6 +265,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
         }
     }
     
+    /**
+     * This function must reload the page of the Web View with the given ID
+     */
     @objc public func reloadPage(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
@@ -264,10 +275,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
             call.reject("No WebView with id: '\(id)'")
             return
         }
-        
-        /**
-         * This function must reload the page of the Web View with the given ID
-         */
         
         DispatchQueue.main.async {
             webView.reload()
