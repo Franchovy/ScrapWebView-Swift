@@ -167,10 +167,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
      * This function must show the Web View with the given ID if invisible
      */
     @objc public func show(_ call: CAPPluginCall) {
-        guard let id = call.getString("id") else {
-            call.reject("An 'id' parameter must be provided when calling 'show'")
-            return
-        }
+        let id = call.getString("id", "")
         
         guard let webView = getWebViewReference(byKey: id) else {
             call.reject("No WebView with id: '\(id)'")
@@ -188,10 +185,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
      * This function must hide the Web View with the given ID if visible
      */
     @objc public func hide(_ call: CAPPluginCall) {
-        guard let id = call.getString("id") else {
-            call.reject("An 'id' parameter must be provided when calling 'hide'")
-            return
-        }
+        let id = call.getString("id", "")
         
         guard let webView = getWebViewReference(byKey: id) else {
             call.reject("No WebView with id: '\(id)'")
@@ -264,14 +258,18 @@ public class ScrapWebviewPlugin: CAPPlugin {
     }
     
     @objc public func reloadPage(_ call: CAPPluginCall) {
+        let id = call.getString("id", "")
         
-        // let id = call.getString("id", "");
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
         
         /**
          * This function must reload the page of the Web View with the given ID
          */
         
-        // @todo
+        webView.reload()
         
         call.resolve();
     }
