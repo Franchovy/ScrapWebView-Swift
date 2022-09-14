@@ -349,6 +349,19 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
     }
     
+    /**
+     * This function must set a given cookie to the Web View with the given ID for the given URL
+     *
+     * The cookie variable contain a stringified JSON Object with the cookies params :
+     * name: string
+     * value: string
+     * domain: string
+     * path: string
+     * secure: boolean
+     * httpOnly: boolean
+     * expirationDate: number
+     * sameSite: 'unspecified' | 'no_restriction' | 'lax' | 'strict'
+     */
     @objc public func setCookie(_ call: CAPPluginCall) {
         
         let id = call.getString("id", "");
@@ -369,21 +382,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
         }
         
         
-        /**
-         * This function must set a given cookie to the Web View with the given ID for the given URL
-         *
-         * The cookie variable contain a stringified JSON Object with the cookies params :
-         * name: string
-         * value: string
-         * domain: string
-         * path: string
-         * secure: boolean
-         * httpOnly: boolean
-         * expirationDate: number
-         * sameSite: 'unspecified' | 'no_restriction' | 'lax' | 'strict'
-         */
-        
-        // @todo
         
         call.resolve();
         
@@ -411,38 +409,38 @@ extension ScrapWebviewPlugin {
         @available(iOS 13.0, *)
         func toHttpCookiePolicy() -> HTTPCookieStringPolicy? {
             switch self {
-                case .unspecified: return .none
-                case .lax: return .sameSiteLax
-                case .strict: return .sameSiteStrict
-                case .no_restriction: return .none
+            case .unspecified: return .none
+            case .lax: return .sameSiteLax
+            case .strict: return .sameSiteStrict
+            case .no_restriction: return .none
             }
         }
         
         /*
-        @available(iOS 11.0, *)
-        func toHttpCookiePolicy() -> String? {
-            switch self {
-                case .unspecified: return nil
-            case .lax: return "Lax"
-            case .strict: return "Strict"
-            case .no_restriction: return "None"
-            }
-        }
-        */
+         @available(iOS 11.0, *)
+         func toHttpCookiePolicy() -> String? {
+         switch self {
+         case .unspecified: return nil
+         case .lax: return "Lax"
+         case .strict: return "Strict"
+         case .no_restriction: return "None"
+         }
+         }
+         */
     }
     
     private struct CookieObject: Decodable {
-    let name: String
-    let value: String
-    let domain: String?
-    let path: String?
-    let secure: Bool?
-    let httpOnly: Bool?
-    let expirationDate: Int64?
-    let sameSite: CookieSameSitePolicy?
+        let name: String
+        let value: String
+        let domain: String?
+        let path: String?
+        let secure: Bool?
+        let httpOnly: Bool?
+        let expirationDate: Int64?
+        let sameSite: CookieSameSitePolicy?
     }
     
-    private func decodeCookie(from cookieJsonString: String, url: URL?) throws -> HTTPCookie? {
+    func decodeCookie(from cookieJsonString: String, url: URL?) throws -> HTTPCookie? {
         guard let cookieJsonData = cookieJsonString.data(using: .utf8) else {
             throw CookieDecodeError.convertStringError
         }
@@ -495,7 +493,7 @@ extension ScrapWebviewPlugin {
             fatalError("Error creating cookie object")
             return nil
         }
-          
+        
         return cookie
     }
 }
