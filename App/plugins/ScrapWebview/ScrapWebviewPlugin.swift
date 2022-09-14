@@ -14,6 +14,8 @@ public class ScrapWebviewPlugin: CAPPlugin {
     
     // MARK: - Internal Methods and Properties
     
+    // Managing WebView References
+    
     /**
      Container Type  for keeping weak references to WKWebWiew allowing safe access and
      deallocation by other processes.
@@ -26,9 +28,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
      Dictionary ID-to-WebViewReference storing (potentially deallocated) webviews by ID.
      */
     var webViewsDictionary: [String: WebViewRef] = [:]
-    var persistentStorage: [String: (WKWebsiteDataStore, WKProcessPool)] = [:]
-    
-    // TODO: Session / Process Pool Dictionary to persist data
     
     private func getWebView(forKey key: String) -> WKWebView? {
         guard webViewsDictionary.keys.contains(key),
@@ -52,6 +51,10 @@ public class ScrapWebviewPlugin: CAPPlugin {
     private func removeWebView(forKey key: String) {
         webViewsDictionary.removeValue(forKey: key)
     }
+    
+    // Persist Session
+    
+    var persistentStorage: [String: (WKWebsiteDataStore, WKProcessPool)] = [:]
     
     private func getPersistentStorageConfig(forKey key: String) -> (WKWebsiteDataStore, WKProcessPool)? {
         if persistentStorage.keys.contains(key) {
@@ -129,6 +132,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         let config = WKWebViewConfiguration()
         
         var shouldAddPersistenceForId = false
+        
         if persistSession {
             if let (store, processPool) = getPersistentStorageConfig(forKey: id) {
                 config.websiteDataStore = store
