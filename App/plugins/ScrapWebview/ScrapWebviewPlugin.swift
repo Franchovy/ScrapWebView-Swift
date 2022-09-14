@@ -89,9 +89,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         // Load call parameters
         
         let id = call.getString("id", "");
-        let shouldShow = call.getBool("show", true)
         let userAgent = call.getString("userAgent", "");
-        let hasCloseHeader = call.getBool("closable", true)
         // let persistSession = call.getBool("persistSession", false);
         // let proxySettings = call.getObject("proxySettings");
         // let windowSettings = call.getObject("windowSettings");
@@ -124,7 +122,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             // Instantiate WebView
             let webView = TestWebView(frame: baseWebView.frame, configuration: config)
             webView.customUserAgent = userAgent
-            webView.isHidden = !shouldShow
+            // TODO: webView.isHidden = !shouldShow
             
             // Add reference to dictionary
             self.addToWebViewsDict(withKey: id, webView: webView)
@@ -353,9 +351,23 @@ public class ScrapWebviewPlugin: CAPPlugin {
     
     @objc public func setCookie(_ call: CAPPluginCall) {
         
-        // let id = call.getString("id", "");
-        // let cookie = call.getString("cookie_stringified", "");
-        // let url = call.getString("url", "");
+        let id = call.getString("id", "");
+        let urlString = call.getString("url");
+        
+        guard let cookieJson = call.getString("cookie_stringified") else {
+            call.reject("'cookie_stringified' parameter must not be null.")
+            return
+        }
+        
+        do {
+            let url = urlString != nil ? URL(string: urlString!) : nil
+            let cookieObject = try decodeCookie(from: cookieJson, url: url)
+            print("Cookie object: \(cookieObject)")
+        } catch {
+            print("Error creating cookie: \(error)")
+            call.reject("Error creating cookie")
+        }
+        
         
         /**
          * This function must set a given cookie to the Web View with the given ID for the given URL
@@ -375,5 +387,115 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         call.resolve();
         
+    }
+}
+
+// PATCH: Swift library does not explicitly declare the "httpOnly" property, it must be added manually.
+extension HTTPCookiePropertyKey {
+    static let httpOnly = HTTPCookiePropertyKey("HttpOnly")
+}
+
+extension ScrapWebviewPlugin {
+    private enum CookieDecodeError: Error {
+        case convertStringError
+        case noUrlPathError
+        case noDomainOrUrlError
+    }
+    
+    private enum CookieSameSitePolicy: Decodable {
+        case unspecified
+        case no_restriction
+        case lax
+        case strict
+        
+        @available(iOS 13.0, *)
+        func toHttpCookiePolicy() -> HTTPCookieStringPolicy? {
+            switch self {
+                case .unspecified: return .none
+                case .lax: return .sameSiteLax
+                case .strict: return .sameSiteStrict
+                case .no_restriction: return .none
+            }
+        }
+        
+        /*
+        @available(iOS 11.0, *)
+        func toHttpCookiePolicy() -> String? {
+            switch self {
+                case .unspecified: return nil
+            case .lax: return "Lax"
+            case .strict: return "Strict"
+            case .no_restriction: return "None"
+            }
+        }
+        */
+    }
+    
+    private struct CookieObject: Decodable {
+    let name: String
+    let value: String
+    let domain: String?
+    let path: String?
+    let secure: Bool?
+    let httpOnly: Bool?
+    let expirationDate: Int64?
+    let sameSite: CookieSameSitePolicy?
+    }
+    
+    private func decodeCookie(from cookieJsonString: String, url: URL?) throws -> HTTPCookie? {
+        guard let cookieJsonData = cookieJsonString.data(using: .utf8) else {
+            throw CookieDecodeError.convertStringError
+        }
+        
+        // Decode JSON Cookie into object
+        let decoder = JSONDecoder()
+        let cookieObject = try decoder.decode(CookieObject.self, from: cookieJsonData)
+        
+        // Create HTTPCookie object from cookieObject
+        
+        var cookieProperties: [HTTPCookiePropertyKey: Any] = [
+            .name: cookieObject.name,
+            .value: cookieObject.value,
+        ]
+        
+        // Load 'path' property into cookie properties
+        if cookieObject.path == nil, let url = url {
+            cookieProperties[.path] = url.path
+        } else if let cookieUrlPath = cookieObject.path {
+            cookieProperties[.path] = cookieUrlPath
+        } else {
+            throw CookieDecodeError.noUrlPathError
+        }
+        
+        // Load either 'domain' or 'url' into properties
+        if let cookieDomain = cookieObject.domain {
+            cookieProperties[.domain] = cookieDomain
+        } else if let cookieUrl = url {
+            cookieProperties[.originURL] = cookieUrl
+        } else {
+            throw CookieDecodeError.noDomainOrUrlError
+        }
+        
+        // Load remaining optional properties
+        cookieProperties[.secure] = cookieObject.secure
+        cookieProperties[.httpOnly] = cookieObject.httpOnly
+        cookieProperties[.expires] = cookieObject.expirationDate != nil
+        
+        // Expiration date
+        if cookieObject.expirationDate != nil {
+            cookieProperties[.maximumAge] = Date(timeIntervalSince1970: TimeInterval(cookieObject.expirationDate!)).timeIntervalSinceNow
+        }
+        
+        // Same-site policy
+        if #available(iOS 13.0, *) {
+            cookieProperties[.sameSitePolicy] = cookieObject.sameSite?.toHttpCookiePolicy()
+        }
+        
+        guard let cookie = HTTPCookie(properties: cookieProperties) else {
+            fatalError("Error creating cookie object")
+            return nil
+        }
+          
+        return cookie
     }
 }
