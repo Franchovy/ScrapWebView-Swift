@@ -54,9 +54,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
     
     // Persist Session
     
-    var persistentStorage: [String: (WKWebsiteDataStore, WKProcessPool)] = [:]
+    var persistentStorage: [String: WKProcessPool] = [:]
     
-    private func getPersistentStorageConfig(forKey key: String) -> (WKWebsiteDataStore, WKProcessPool)? {
+    private func getPersistentStorageConfig(forKey key: String) -> WKProcessPool? {
         if persistentStorage.keys.contains(key) {
             return persistentStorage[key]
         }
@@ -65,7 +65,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     
     private func addPersistentStorage(forKey key: String, webView: WKWebView) {
         if !persistentStorage.keys.contains(key) {
-            persistentStorage[key] = (webView.configuration.websiteDataStore, webView.configuration.processPool)
+            persistentStorage[key] = webView.configuration.processPool
         }
     }
     
@@ -131,30 +131,29 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         let config = WKWebViewConfiguration()
         
-        var shouldAddPersistenceForId = false
-        
-        if persistSession {
-            if let (store, processPool) = getPersistentStorageConfig(forKey: id) {
-                config.websiteDataStore = store
-                config.processPool = processPool
-            } else {
-                shouldAddPersistenceForId = true
-            }
-        }
-        
         // TODO: Proxy Settings
         // TODO: Window Settings
         
         // Create WebView and add to base WebView
         
         DispatchQueue.main.async {
+            
+            // Load persistence config
+            if persistSession {
+                if let processPool = self.getPersistentStorageConfig(forKey: id) {
+                    config.processPool = processPool
+                } else {
+                    config.processPool = WKProcessPool()
+                }
+            }
+            
             // Instantiate WebView
             let webView = TestWebView(frame: baseWebView.frame, configuration: config)
             webView.customUserAgent = userAgent
             // TODO: webView.isHidden = !shouldShow
             
-            // If persist session doesn't exist yet
-            if shouldAddPersistenceForId {
+            // Add persistence config to class if doesn't exist yet
+            if persistSession {
                 self.addPersistentStorage(forKey: id, webView: webView)
             }
             
