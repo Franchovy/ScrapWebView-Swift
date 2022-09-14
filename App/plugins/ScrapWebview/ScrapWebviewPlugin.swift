@@ -153,7 +153,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             webView.customUserAgent = userAgent
             // TODO: webView.isHidden = !shouldShow
             
-            // If should persist session, and doesn't exist yet
+            // If persist session doesn't exist yet
             if shouldAddPersistenceForId {
                 self.addPersistentStorage(forKey: id, webView: webView)
             }
