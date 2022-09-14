@@ -26,10 +26,11 @@ public class ScrapWebviewPlugin: CAPPlugin {
      Dictionary ID-to-WebViewReference storing (potentially deallocated) webviews by ID.
      */
     var webViewsDictionary: [String: WebViewRef] = [:]
+    var persistentStorage: [String: (WKWebsiteDataStore, WKProcessPool)] = [:]
     
     // TODO: Session / Process Pool Dictionary to persist data
     
-    private func getWebViewReference(byKey key: String) -> WKWebView? {
+    private func getWebView(forKey key: String) -> WKWebView? {
         guard webViewsDictionary.keys.contains(key),
               let webViewRef = webViewsDictionary[key]
         else {
@@ -39,7 +40,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         return webViewRef.webView
     }
     
-    private func addToWebViewsDict(withKey key: String, webView: WKWebView) {
+    private func addWebView(withKey key: String, webView: WKWebView) {
         // If key is already present, do nothing.
         guard !webViewsDictionary.keys.contains(key) else {
             return
@@ -48,8 +49,21 @@ public class ScrapWebviewPlugin: CAPPlugin {
         webViewsDictionary[key] = WebViewRef(webView: webView)
     }
     
-    private func removeFromWebViewsDict(forKey key: String) {
+    private func removeWebView(forKey key: String) {
         webViewsDictionary.removeValue(forKey: key)
+    }
+    
+    private func getPersistentStorageConfig(forKey key: String) -> (WKWebsiteDataStore, WKProcessPool)? {
+        if persistentStorage.keys.contains(key) {
+            return persistentStorage[key]
+        }
+        return nil
+    }
+    
+    private func addPersistentStorage(forKey key: String, webView: WKWebView) {
+        if !persistentStorage.keys.contains(key) {
+            persistentStorage[key] = (webView.configuration.websiteDataStore, webView.configuration.processPool)
+        }
     }
     
     // MARK: - Plugin public methods
@@ -90,7 +104,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         let id = call.getString("id", "");
         let userAgent = call.getString("userAgent", "");
+        let persistSession = call.getBool("persistSession", true); // DEBUG
         // let persistSession = call.getBool("persistSession", false);
+        
         // let proxySettings = call.getObject("proxySettings");
         // let windowSettings = call.getObject("windowSettings");
         
@@ -112,7 +128,16 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         let config = WKWebViewConfiguration()
         
-        // TODO: Process Pool by ID
+        var shouldAddPersistenceForId = false
+        if persistSession {
+            if let (store, processPool) = getPersistentStorageConfig(forKey: id) {
+                config.websiteDataStore = store
+                config.processPool = processPool
+            } else {
+                shouldAddPersistenceForId = true
+            }
+        }
+        
         // TODO: Proxy Settings
         // TODO: Window Settings
         
@@ -124,8 +149,13 @@ public class ScrapWebviewPlugin: CAPPlugin {
             webView.customUserAgent = userAgent
             // TODO: webView.isHidden = !shouldShow
             
+            // If should persist session, and doesn't exist yet
+            if shouldAddPersistenceForId {
+                self.addPersistentStorage(forKey: id, webView: webView)
+            }
+            
             // Add reference to dictionary
-            self.addToWebViewsDict(withKey: id, webView: webView)
+            self.addWebView(withKey: id, webView: webView)
             
             // Add to UI
             baseWebView.addSubview(webView)
@@ -140,12 +170,12 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func destroy(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
         
-        removeFromWebViewsDict(forKey: id)
+        removeWebView(forKey: id)
         DispatchQueue.main.async {
             webView.removeFromSuperview()
             call.resolve();
@@ -158,7 +188,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func replaceId(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -170,8 +200,8 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        removeFromWebViewsDict(forKey: id)
-        addToWebViewsDict(withKey: newId, webView: webView)
+        removeWebView(forKey: id)
+        addWebView(withKey: newId, webView: webView)
         
         call.resolve();
     }
@@ -183,7 +213,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func show(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -200,7 +230,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func hide(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -218,7 +248,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func getUrl(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -249,7 +279,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: \(id)")
             return
         }
@@ -276,7 +306,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func reloadPage(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -334,7 +364,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func getCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -384,7 +414,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func setCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
-        guard let webView = getWebViewReference(byKey: id) else {
+        guard let webView = getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
