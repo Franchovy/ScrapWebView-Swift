@@ -102,26 +102,27 @@ public class ScrapWebviewPlugin: CAPPlugin {
      * They must not be in a "sleeping" state.
      */
     @objc public func create(_ call: CAPPluginCall) {
-        
-        // Load call parameters
-        
         let id = call.getString("id", "");
-        let userAgent = call.getString("userAgent", "");
-        let persistSession = call.getBool("persistSession", true); // DEBUG
-        // let persistSession = call.getBool("persistSession", false);
-        
-        // let proxySettings = call.getObject("proxySettings");
-        // let windowSettings = call.getObject("windowSettings");
         
         // If webview with this key already exists, do nothing.
-        
         if webViewsDictionary.keys.contains(id) {
             return
         }
         
-        // Ensure base webview exists
-        // TODO: What is the fail condition?
+        // Parameters
         
+        let userAgent = call.getString("userAgent", "");
+        let persistSession = call.getBool("persistSession", false);
+        
+        // Proxy Settings
+        // let proxySettings = call.getObject("proxySettings");
+        
+        // Window Settings
+        let windowSettings = call.getObject("windowSettings");
+        let shouldShow = windowSettings?["show"] as? Bool ?? false
+        let closeableHeader = windowSettings?["closeable"] as? Bool ?? false
+        
+        // Parent view
         guard let baseWebView = webView else {
             call.reject("ERROR CREATING WEBVIEW: Cannot find base webview")
             return
@@ -132,7 +133,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
         let config = WKWebViewConfiguration()
         
         // TODO: Proxy Settings
-        // TODO: Window Settings
         
         // Create WebView and add to base WebView
         
@@ -150,7 +150,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             // Instantiate WebView
             let webView = TestWebView(frame: baseWebView.frame, configuration: config)
             webView.customUserAgent = userAgent
-            // TODO: webView.isHidden = !shouldShow
+            webView.isHidden = !shouldShow
             
             // Add persistence config to class if doesn't exist yet
             if persistSession {
