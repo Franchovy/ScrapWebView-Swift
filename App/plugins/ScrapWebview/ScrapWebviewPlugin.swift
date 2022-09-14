@@ -332,21 +332,40 @@ public class ScrapWebviewPlugin: CAPPlugin {
     }
     
     @objc public func getCookie(_ call: CAPPluginCall) {
+        let id = call.getString("id", "");
         
-        // let id = call.getString("id", "");
-        // let name = call.getString("name", "");
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
+        
+        guard let name = call.getString("name") else {
+            call.reject("Must provide a 'name' parameter for getCookie().")
+            return
+        }
         
         /**
          * This function must return the cookie of a given name stored in the Web View of the given ID
          */
         
-        // @todo
-        
-        let cookie = "";
-        
-        
-        call.resolve(["cookie": cookie ]);
-        
+        DispatchQueue.main.async {
+            webView.configuration.websiteDataStore.httpCookieStore.getAllCookies({ cookies in
+                // Get cookie with matching name
+                guard let cookie = cookies.first(where: { $0.name == name })
+                else {
+                    call.reject("No cookie found with name: \(name)")
+                    return
+                }
+                
+                do {
+                    let jsonCookie = try self.getCookieJson(from: cookie)
+                    
+                    call.resolve(["cookie": jsonCookie ])
+                } catch {
+                    call.reject("Error encoding cookie: \(error)")
+                }
+            })
+        }
     }
     
     /**
@@ -363,8 +382,13 @@ public class ScrapWebviewPlugin: CAPPlugin {
      * sameSite: 'unspecified' | 'no_restriction' | 'lax' | 'strict'
      */
     @objc public func setCookie(_ call: CAPPluginCall) {
-        
         let id = call.getString("id", "");
+        
+        guard let webView = getWebViewReference(byKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
+        
         let urlString = call.getString("url");
         
         guard let cookieJson = call.getString("cookie_stringified") else {
@@ -375,16 +399,15 @@ public class ScrapWebviewPlugin: CAPPlugin {
         do {
             let url = urlString != nil ? URL(string: urlString!) : nil
             let cookieObject = try decodeCookie(from: cookieJson, url: url)
-            print("Cookie object: \(cookieObject)")
+            
+            DispatchQueue.main.async {
+                webView.configuration.websiteDataStore.httpCookieStore.setCookie(cookieObject)
+                call.resolve();
+            }
         } catch {
             print("Error creating cookie: \(error)")
             call.reject("Error creating cookie")
         }
-        
-        
-        
-        call.resolve();
-        
     }
 }
 
@@ -400,11 +423,27 @@ extension ScrapWebviewPlugin {
         case noDomainOrUrlError
     }
     
-    private enum CookieSameSitePolicy: Decodable {
+    private enum CookieSameSitePolicy: Codable {
         case unspecified
         case no_restriction
         case lax
         case strict
+        
+        @available(iOS 13.0, *)
+        init(from httpCookiePolicy: HTTPCookieStringPolicy?) {
+            switch httpCookiePolicy {
+            case HTTPCookieStringPolicy.sameSiteStrict:
+                self = .strict
+                break
+            case HTTPCookieStringPolicy.sameSiteLax:
+                self = .lax
+                break
+            case .none:
+                self = .no_restriction
+            default:
+                self = .unspecified
+            }
+        }
         
         @available(iOS 13.0, *)
         func toHttpCookiePolicy() -> HTTPCookieStringPolicy? {
@@ -415,21 +454,9 @@ extension ScrapWebviewPlugin {
             case .no_restriction: return .none
             }
         }
-        
-        /*
-         @available(iOS 11.0, *)
-         func toHttpCookiePolicy() -> String? {
-         switch self {
-         case .unspecified: return nil
-         case .lax: return "Lax"
-         case .strict: return "Strict"
-         case .no_restriction: return "None"
-         }
-         }
-         */
     }
     
-    private struct CookieObject: Decodable {
+    private struct CookieObject: Codable {
         let name: String
         let value: String
         let domain: String?
@@ -438,9 +465,39 @@ extension ScrapWebviewPlugin {
         let httpOnly: Bool?
         let expirationDate: Int64?
         let sameSite: CookieSameSitePolicy?
+        
+        init(from httpCookie: HTTPCookie) {
+            name = httpCookie.name
+            value = httpCookie.value
+            domain = httpCookie.domain
+            path = httpCookie.path
+            secure = httpCookie.isSecure
+            httpOnly = httpCookie.isHTTPOnly
+            // TODO: Proper date conversion from Swift to JS
+            expirationDate = nil
+            if #available(iOS 13.0, *) {
+                sameSite = CookieSameSitePolicy(from: httpCookie.sameSitePolicy)
+            } else {
+                // TODO: - iOS 11
+                sameSite = nil
+            }
+        }
     }
     
-    func decodeCookie(from cookieJsonString: String, url: URL?) throws -> HTTPCookie? {
+    func getCookieJson(from httpCookie: HTTPCookie) throws -> String {
+        let encoder = JSONEncoder()
+        
+        let cookieObject = CookieObject(from: httpCookie)
+        let cookieJson = try encoder.encode(cookieObject)
+        
+        guard let cookieJsonString = String(data: cookieJson, encoding: .utf8) else {
+            fatalError("Failed to convert JSON data to string")
+        }
+        
+        return cookieJsonString
+    }
+    
+    func decodeCookie(from cookieJsonString: String, url: URL?) throws -> HTTPCookie {
         guard let cookieJsonData = cookieJsonString.data(using: .utf8) else {
             throw CookieDecodeError.convertStringError
         }
@@ -481,17 +538,19 @@ extension ScrapWebviewPlugin {
         
         // Expiration date
         if cookieObject.expirationDate != nil {
+            // TODO: Proper date conversion from JS to Swift
             cookieProperties[.maximumAge] = Date(timeIntervalSince1970: TimeInterval(cookieObject.expirationDate!)).timeIntervalSinceNow
         }
         
         // Same-site policy
         if #available(iOS 13.0, *) {
             cookieProperties[.sameSitePolicy] = cookieObject.sameSite?.toHttpCookiePolicy()
+        } else {
+            // TODO: iOS 11.0 ?
         }
         
         guard let cookie = HTTPCookie(properties: cookieProperties) else {
-            fatalError("Error creating cookie object")
-            return nil
+            fatalError("Failed to create HTTPCookie object from given properties")
         }
         
         return cookie
