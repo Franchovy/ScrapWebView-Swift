@@ -21,7 +21,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
      deallocation by other processes.
      */
     struct WebViewRef {
-        weak var webView: WKWebView?
+        var webView: WKWebView
     }
     
     /**
@@ -54,19 +54,25 @@ public class ScrapWebviewPlugin: CAPPlugin {
     
     // Persist Session
     
-    var persistentStorage: [String: WKProcessPool] = [:]
+    var persistentStorage: [String: (WKProcessPool, WKWebsiteDataStore)] = [:]
     
-    private func getPersistentStorageConfig(forKey key: String) -> WKProcessPool? {
+    private func getPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore)? {
         if persistentStorage.keys.contains(key) {
             return persistentStorage[key]
         }
+        
         return nil
     }
     
-    private func addPersistentStorage(forKey key: String, webView: WKWebView) {
-        if !persistentStorage.keys.contains(key) {
-            persistentStorage[key] = webView.configuration.processPool
+    private func createPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore) {
+        if persistentStorage.keys.contains(key) {
+            fatalError("Persistent storage for this key already exists, use 'getPersistentStorageConfig(forKey: \(key)' instead")
         }
+        
+        let persistentStore = (WKProcessPool(), WKWebsiteDataStore.nonPersistent())
+        persistentStorage[key] = persistentStore
+        
+        return persistentStore
     }
     
     // MARK: - Plugin public methods
@@ -112,7 +118,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
         // Parameters
         
         let userAgent = call.getString("userAgent", "");
-        let persistSession = call.getBool("persistSession", false);
+        var persistSession = call.getBool("persistSession", false);
+        
+        persistSession = true
         
         // Proxy Settings
         // let proxySettings = call.getObject("proxySettings");
@@ -140,22 +148,25 @@ public class ScrapWebviewPlugin: CAPPlugin {
             
             // Load persistence config
             if persistSession {
-                if let processPool = self.getPersistentStorageConfig(forKey: id) {
+                if let (processPool, dataStore) = self.getPersistentStorageConfig(forKey: id) {
+                    // Use existing process pool and dataStore
                     config.processPool = processPool
+                    config.websiteDataStore = dataStore
                 } else {
-                    config.processPool = WKProcessPool()
+                    // Create persistent process pool and dataStore
+                    let (processPool, dataStore) = self.createPersistentStorageConfig(forKey: id)
+                    config.processPool = processPool
+                    config.websiteDataStore = dataStore
                 }
+            } else {
+                config.processPool = WKProcessPool()
+                config.websiteDataStore = .nonPersistent()
             }
             
             // Instantiate WebView
             let webView = TestWebView(frame: baseWebView.frame, configuration: config)
             webView.customUserAgent = userAgent
             webView.isHidden = !shouldShow
-            
-            // Add persistence config to class if doesn't exist yet
-            if persistSession {
-                self.addPersistentStorage(forKey: id, webView: webView)
-            }
             
             // Add reference to dictionary
             self.addWebView(withKey: id, webView: webView)
@@ -178,9 +189,13 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        removeWebView(forKey: id)
         DispatchQueue.main.async {
+            // Remove webview from superview
             webView.removeFromSuperview()
+            
+            // Call removes owned webview, destroying it
+            self.removeWebView(forKey: id)
+            
             call.resolve();
         }
     }
