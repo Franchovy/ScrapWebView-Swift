@@ -118,7 +118,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         // Parameters
         
         let userAgent = call.getString("userAgent", "");
-        var persistSession = call.getBool("persistSession", false);
+        let persistSession = call.getBool("persistSession", false);
         
         // Proxy Settings
         // PROXY SETTINGS ARE NOT SETTABLE ON WKWEBVIEW
