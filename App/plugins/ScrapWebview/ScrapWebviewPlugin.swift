@@ -249,6 +249,28 @@ public class ScrapWebviewPlugin: CAPPlugin {
         }
     }
     
+    /**
+     * This function must execute Javascript in the Web View with the given ID.
+     *
+     * The code to execute is a single string in the variable toExecute.
+     *
+     * The result of the function will always be a JSON Object of this format :
+     * {
+     *      result: any,
+     *      error: {
+     *          name: string,
+     *          message: string;
+     *          stack: string;
+     *      }
+     * }
+     *
+     * If result exists in the object, it must be set to the variable below
+     * If error exists in the object, call.reject() must be called with the stringified error object as a parameter
+     *
+     * IMPORTANT :
+     * We also need a timeout feature if the script never ends its execution
+     * If the script didn't end in the time given by timeout (ms), call.reject("ScrapingTimeoutError") must be called
+     */
     @objc public func evaluateScript(_ call: CAPPluginCall) {
         
         // let id = call.getString("id", null);
@@ -260,28 +282,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         // }
         // let toExecute = "(" + script + ")(" + params + ").then(result => ({ result })).catch(error => { console.log(error); return { error: { name: error.name, message: error.message, stack: error.stack } }; })";
         
-        /**
-         * This function must execute Javascript in the Web View with the given ID.
-         *
-         * The code to execute is a single string in the variable toExecute.
-         *
-         * The result of the function will always be a JSON Object of this format :
-         * {
-         *      result: any,
-         *      error: {
-         *          name: string,
-         *          message: string;
-         *          stack: string;
-         *      }
-         * }
-         *
-         * If result exists in the object, it must be set to the variable below
-         * If error exists in the object, call.reject() must be called with the stringified error object as a parameter
-         *
-         * IMPORTANT :
-         * We also need a timeout feature if the script never ends its execution
-         * If the script didn't end in the time given by timeout (ms), call.reject("ScrapingTimeoutError") must be called
-         */
+
         
         
         // @todo
@@ -292,6 +293,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
     }
     
+    /**
+     * This function must return the cookie of a given name stored in the Web View of the given ID
+     */
     @objc public func getCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
@@ -304,10 +308,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
             call.reject("Must provide a 'name' parameter for getCookie().")
             return
         }
-        
-        /**
-         * This function must return the cookie of a given name stored in the Web View of the given ID
-         */
         
         DispatchQueue.main.async {
             webView.configuration.websiteDataStore.httpCookieStore.getAllCookies({ cookies in
