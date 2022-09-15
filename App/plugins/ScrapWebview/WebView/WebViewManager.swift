@@ -37,9 +37,7 @@ class WebViewManager {
         
         let config = createWebViewConfiguration(forKey: key, persistSession: persistSession)
         
-        // let webView = WKWebView(frame: frame, configuration: config)
-        // DEBUG:
-        let webView = TestWebView(frame: frame, configuration: config)
+        let webView = WKWebView(frame: frame, configuration: config)
         webViewsDictionary[key] = webView
         
         return webView
