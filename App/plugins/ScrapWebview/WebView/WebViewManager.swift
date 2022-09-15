@@ -8,8 +8,8 @@
 import Foundation
 import WebKit
 
-class ScrapWebView {
-    static let shared = ScrapWebView()
+class WebViewManager {
+    static let shared = WebViewManager()
     
     // MARK: - Private Properties
     
@@ -64,13 +64,13 @@ class ScrapWebView {
         
         // Load persistence config
         if persistSession {
-            if let (processPool, dataStore) = ScrapWebView.shared.getPersistentStorageConfig(forKey: key) {
+            if let (processPool, dataStore) = WebViewManager.shared.getPersistentStorageConfig(forKey: key) {
                 // Use existing process pool and dataStore
                 config.processPool = processPool
                 config.websiteDataStore = dataStore
             } else {
                 // Create persistent process pool and dataStore
-                let (processPool, dataStore) = ScrapWebView.shared.createPersistentStorageConfig(forKey: key)
+                let (processPool, dataStore) = WebViewManager.shared.createPersistentStorageConfig(forKey: key)
                 config.processPool = processPool
                 config.websiteDataStore = dataStore
             }

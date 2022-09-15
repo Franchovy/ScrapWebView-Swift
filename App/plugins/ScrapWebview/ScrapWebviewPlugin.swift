@@ -52,7 +52,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         let id = call.getString("id", "");
         
         // If webview with this key already exists, do nothing.
-        if ScrapWebView.shared.getWebView(forKey: id) != nil {
+        if WebViewManager.shared.getWebView(forKey: id) != nil {
             return
         }
         
@@ -81,7 +81,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         DispatchQueue.main.async {
             
             // Add reference to dictionary
-            let webView = ScrapWebView.shared.createWebView(
+            let webView = WebViewManager.shared.createWebView(
                 forKey: id,
                 frame: baseWebView.frame,
                 persistSession: shouldPersistSession
@@ -92,7 +92,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             // Add to UI
             if shouldShow {
                 if let baseViewController = self.baseViewController {
-                    let containerViewController = ScrapWebViewControllerManager.shared.createViewController(forKey: id, webView: webView)
+                    let containerViewController = WebViewControllerManager.shared.createViewController(forKey: id, webView: webView)
                     
                     baseViewController.present(containerViewController, animated: true)
                 }
@@ -110,10 +110,10 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         DispatchQueue.main.async {
             // Dismiss webview container viewcontroller
-            ScrapWebViewControllerManager.shared.dismissViewController(forKey: id)
+            WebViewControllerManager.shared.dismissViewController(forKey: id)
             
             // Call removes owned webview, destroying it
-            ScrapWebView.shared.removeWebView(forKey: id)
+            WebViewManager.shared.removeWebView(forKey: id)
             
             call.resolve();
         }
@@ -131,7 +131,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        ScrapWebView.shared.replaceWebViewId(forKey: id, newKey: newId)
+        WebViewManager.shared.replaceWebViewId(forKey: id, newKey: newId)
         
         call.resolve();
     }
@@ -143,7 +143,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func show(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -151,7 +151,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         DispatchQueue.main.async {
             // Create and present container view controller
             if let baseViewController = self.baseViewController {
-                let viewController = ScrapWebViewControllerManager.shared.createViewController(forKey: id, webView: webView)
+                let viewController = WebViewControllerManager.shared.createViewController(forKey: id, webView: webView)
                 
                 baseViewController.present(viewController, animated: true)
             }
@@ -168,7 +168,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         
         DispatchQueue.main.async {
             // Dismiss webview container viewcontroller
-            ScrapWebViewControllerManager.shared.dismissViewController(forKey: id)
+            WebViewControllerManager.shared.dismissViewController(forKey: id)
             
             call.resolve();
         }
@@ -181,7 +181,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func getUrl(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -212,7 +212,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: \(id)")
             return
         }
@@ -239,7 +239,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func reloadPage(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -301,7 +301,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func getCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -347,7 +347,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func setCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }

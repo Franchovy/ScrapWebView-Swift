@@ -7,8 +7,8 @@
 
 import UIKit
 
-class ScrapWebViewControllerManager {
-    static let shared = ScrapWebViewControllerManager()
+class WebViewControllerManager {
+    static let shared = WebViewControllerManager()
     
     /**
      Container type to allow viewcontrollers to be owned and de-allocated by other processes.
@@ -24,7 +24,7 @@ class ScrapWebViewControllerManager {
     // MARK: - Public methods
     
     public func createViewController(forKey key: String, webView: UIView) -> UINavigationController {
-        let webViewController = ScrapWebViewController(webView: webView)
+        let webViewController = WebViewController(webView: webView)
         
         let navigationController = UINavigationController(rootViewController: webViewController)
         
