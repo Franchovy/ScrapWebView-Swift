@@ -12,6 +12,12 @@ import WebKit
 @objc(ScrapWebviewPlugin)
 public class ScrapWebviewPlugin: CAPPlugin {
     
+    private var baseViewController: CAPBridgeViewController? {
+        get {
+            return self.bridge?.viewController as? CAPBridgeViewController
+        }
+    }
+    
     /**
      * This function must create a new Web View associated to a given ID.
      * This ID is used in other function to do things with the Web View.
@@ -85,7 +91,11 @@ public class ScrapWebviewPlugin: CAPPlugin {
             
             // Add to UI
             if shouldShow {
-                baseWebView.addSubview(webView)
+                if let baseViewController = self.baseViewController {
+                    let webViewController = WebViewNavigationController(webView: webView, closeable: closeableHeader)
+                    
+                    baseViewController.present(webViewController, animated: true)
+                }
             }
             
             call.resolve();
@@ -282,7 +292,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         // }
         // let toExecute = "(" + script + ")(" + params + ").then(result => ({ result })).catch(error => { console.log(error); return { error: { name: error.name, message: error.message, stack: error.stack } }; })";
         
-
+        
         
         
         // @todo
