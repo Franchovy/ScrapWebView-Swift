@@ -12,71 +12,6 @@ import WebKit
 @objc(ScrapWebviewPlugin)
 public class ScrapWebviewPlugin: CAPPlugin {
     
-    // MARK: - Internal Methods and Properties
-    
-    // Managing WebView References
-    
-    /**
-     Container Type  for keeping weak references to WKWebWiew allowing safe access and
-     deallocation by other processes.
-     */
-    struct WebViewRef {
-        var webView: WKWebView
-    }
-    
-    /**
-     Dictionary ID-to-WebViewReference storing (potentially deallocated) webviews by ID.
-     */
-    var webViewsDictionary: [String: WebViewRef] = [:]
-    
-    private func getWebView(forKey key: String) -> WKWebView? {
-        guard webViewsDictionary.keys.contains(key),
-              let webViewRef = webViewsDictionary[key]
-        else {
-            return nil
-        }
-        
-        return webViewRef.webView
-    }
-    
-    private func addWebView(withKey key: String, webView: WKWebView) {
-        // If key is already present, do nothing.
-        guard !webViewsDictionary.keys.contains(key) else {
-            return
-        }
-        
-        webViewsDictionary[key] = WebViewRef(webView: webView)
-    }
-    
-    private func removeWebView(forKey key: String) {
-        webViewsDictionary.removeValue(forKey: key)
-    }
-    
-    // Persist Session
-    
-    var persistentStorage: [String: (WKProcessPool, WKWebsiteDataStore)] = [:]
-    
-    private func getPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore)? {
-        if persistentStorage.keys.contains(key) {
-            return persistentStorage[key]
-        }
-        
-        return nil
-    }
-    
-    private func createPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore) {
-        if persistentStorage.keys.contains(key) {
-            fatalError("Persistent storage for this key already exists, use 'getPersistentStorageConfig(forKey: \(key)' instead")
-        }
-        
-        let persistentStore = (WKProcessPool(), WKWebsiteDataStore.nonPersistent())
-        persistentStorage[key] = persistentStore
-        
-        return persistentStore
-    }
-    
-    // MARK: - Plugin public methods
-    
     /**
      * This function must create a new Web View associated to a given ID.
      * This ID is used in other function to do things with the Web View.
@@ -111,7 +46,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         let id = call.getString("id", "");
         
         // If webview with this key already exists, do nothing.
-        if webViewsDictionary.keys.contains(id) {
+        if ScrapWebView.shared.getWebView(forKey: id) != nil {
             return
         }
         
@@ -145,13 +80,13 @@ public class ScrapWebviewPlugin: CAPPlugin {
             
             // Load persistence config
             if persistSession {
-                if let (processPool, dataStore) = self.getPersistentStorageConfig(forKey: id) {
+                if let (processPool, dataStore) = ScrapWebView.shared.getPersistentStorageConfig(forKey: id) {
                     // Use existing process pool and dataStore
                     config.processPool = processPool
                     config.websiteDataStore = dataStore
                 } else {
                     // Create persistent process pool and dataStore
-                    let (processPool, dataStore) = self.createPersistentStorageConfig(forKey: id)
+                    let (processPool, dataStore) = ScrapWebView.shared.createPersistentStorageConfig(forKey: id)
                     config.processPool = processPool
                     config.websiteDataStore = dataStore
                 }
@@ -166,7 +101,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             webView.isHidden = !shouldShow
             
             // Add reference to dictionary
-            self.addWebView(withKey: id, webView: webView)
+            ScrapWebView.shared.addWebView(withKey: id, webView: webView)
             
             // Add to UI
             baseWebView.addSubview(webView)
@@ -181,7 +116,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func destroy(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -191,7 +126,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             webView.removeFromSuperview()
             
             // Call removes owned webview, destroying it
-            self.removeWebView(forKey: id)
+            ScrapWebView.shared.removeWebView(forKey: id)
             
             call.resolve();
         }
@@ -203,7 +138,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func replaceId(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -215,8 +150,8 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        removeWebView(forKey: id)
-        addWebView(withKey: newId, webView: webView)
+        ScrapWebView.shared.removeWebView(forKey: id)
+        ScrapWebView.shared.addWebView(withKey: newId, webView: webView)
         
         call.resolve();
     }
@@ -228,7 +163,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func show(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -245,7 +180,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func hide(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -263,7 +198,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func getUrl(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -294,7 +229,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: \(id)")
             return
         }
@@ -321,7 +256,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func reloadPage(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -379,7 +314,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func getCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
@@ -429,7 +364,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func setCookie(_ call: CAPPluginCall) {
         let id = call.getString("id", "");
         
-        guard let webView = getWebView(forKey: id) else {
+        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
             call.reject("No WebView with id: '\(id)'")
             return
         }
