@@ -92,9 +92,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
             // Add to UI
             if shouldShow {
                 if let baseViewController = self.baseViewController {
-                    let webViewController = WebViewNavigationController(webView: webView, closeable: closeableHeader)
+                    let containerViewController = ScrapWebViewControllerManager.shared.createViewController(forKey: id, webView: webView)
                     
-                    baseViewController.present(webViewController, animated: true)
+                    baseViewController.present(containerViewController, animated: true)
                 }
             }
             
@@ -108,14 +108,9 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func destroy(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
-            call.reject("No WebView with id: '\(id)'")
-            return
-        }
-        
         DispatchQueue.main.async {
-            // Remove webview from superview
-            webView.removeFromSuperview()
+            // Dismiss webview container viewcontroller
+            ScrapWebViewControllerManager.shared.dismissViewController(forKey: id)
             
             // Call removes owned webview, destroying it
             ScrapWebView.shared.removeWebView(forKey: id)
@@ -129,12 +124,6 @@ public class ScrapWebviewPlugin: CAPPlugin {
      */
     @objc public func replaceId(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
-        
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
-            call.reject("No WebView with id: '\(id)'")
-            return
-        }
-        
         let newId = call.getString("new_id", "");
         
         // If ID hasn't changed, do nothing
@@ -160,7 +149,13 @@ public class ScrapWebviewPlugin: CAPPlugin {
         }
         
         DispatchQueue.main.async {
-            webView.isHidden = false
+            // Create and present container view controller
+            if let baseViewController = self.baseViewController {
+                let viewController = ScrapWebViewControllerManager.shared.createViewController(forKey: id, webView: webView)
+                
+                baseViewController.present(viewController, animated: true)
+            }
+            
             call.resolve();
         }
     }
@@ -171,13 +166,10 @@ public class ScrapWebviewPlugin: CAPPlugin {
     @objc public func hide(_ call: CAPPluginCall) {
         let id = call.getString("id", "")
         
-        guard let webView = ScrapWebView.shared.getWebView(forKey: id) else {
-            call.reject("No WebView with id: '\(id)'")
-            return
-        }
-        
         DispatchQueue.main.async {
-            webView.isHidden = true
+            // Dismiss webview container viewcontroller
+            ScrapWebViewControllerManager.shared.dismissViewController(forKey: id)
+            
             call.resolve();
         }
     }

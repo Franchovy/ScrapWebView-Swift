@@ -14,6 +14,7 @@ class ScrapWebView {
     // MARK: - Private Properties
     
     private var webViewsDictionary: [String: WKWebView] = [:]
+    private var viewControllers: [String: UIViewController?] = [:]
     private var persistentStorage: [String: (WKProcessPool, WKWebsiteDataStore)] = [:]
     
     // MARK: - Public Methods
