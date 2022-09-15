@@ -11,44 +11,79 @@ import WebKit
 class ScrapWebView {
     static let shared = ScrapWebView()
     
-    // WebView Reference Management
+    // MARK: - Private Properties
     
-    /**
-     Container Type  for keeping weak references to WKWebWiew allowing safe access and
-     deallocation by other processes.
-     */
-    private struct WebViewRef {
-        var webView: WKWebView
-    }
-    
-    // Containers for webviews and storage based on IDs
-    private var webViewsDictionary: [String: WebViewRef] = [:]
+    private var webViewsDictionary: [String: WKWebView] = [:]
     private var persistentStorage: [String: (WKProcessPool, WKWebsiteDataStore)] = [:]
+    
+    // MARK: - Public Methods
     
     func getWebView(forKey key: String) -> WKWebView? {
         guard webViewsDictionary.keys.contains(key),
-              let webViewRef = webViewsDictionary[key]
+              let webView = webViewsDictionary[key]
         else {
             return nil
         }
         
-        return webViewRef.webView
+        return webView
     }
     
-    func addWebView(withKey key: String, webView: WKWebView) {
+    func createWebView(forKey key: String, frame: CGRect, persistSession: Bool) -> WKWebView {
         // If key is already present, do nothing.
         guard !webViewsDictionary.keys.contains(key) else {
-            return
+            fatalError("Webview with this ID has already been created, Use getWebView(forKey:\(key)) instead.")
         }
         
-        webViewsDictionary[key] = WebViewRef(webView: webView)
+        let config = createWebViewConfiguration(forKey: key, persistSession: persistSession)
+        
+        // let webView = WKWebView(frame: frame, configuration: config)
+        // DEBUG:
+        let webView = TestWebView(frame: frame, configuration: config)
+        webViewsDictionary[key] = webView
+        
+        return webView
     }
     
     func removeWebView(forKey key: String) {
         webViewsDictionary.removeValue(forKey: key)
     }
     
-    func getPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore)? {
+    func replaceWebViewId(forKey prevKey: String, newKey: String) {
+        let webView = webViewsDictionary.removeValue(forKey: prevKey)
+        webViewsDictionary[newKey] = webView
+    }
+    
+    // MARK: - Private methods
+    
+    // WKWebView Configuration
+    
+    private func createWebViewConfiguration(forKey key: String, persistSession: Bool) -> WKWebViewConfiguration {
+        // WebView Configuration
+        let config = WKWebViewConfiguration()
+        
+        // Load persistence config
+        if persistSession {
+            if let (processPool, dataStore) = ScrapWebView.shared.getPersistentStorageConfig(forKey: key) {
+                // Use existing process pool and dataStore
+                config.processPool = processPool
+                config.websiteDataStore = dataStore
+            } else {
+                // Create persistent process pool and dataStore
+                let (processPool, dataStore) = ScrapWebView.shared.createPersistentStorageConfig(forKey: key)
+                config.processPool = processPool
+                config.websiteDataStore = dataStore
+            }
+        } else {
+            config.processPool = WKProcessPool()
+            config.websiteDataStore = .nonPersistent()
+        }
+        
+        return config
+    }
+    
+    // WKProcessPool and WKWebsiteDataStore management
+    
+    private func getPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore)? {
         if persistentStorage.keys.contains(key) {
             return persistentStorage[key]
         }
@@ -56,7 +91,7 @@ class ScrapWebView {
         return nil
     }
     
-    func createPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore) {
+    private func createPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore) {
         if persistentStorage.keys.contains(key) {
             fatalError("Persistent storage for this key already exists, use 'getPersistentStorageConfig(forKey: \(key)' instead")
         }

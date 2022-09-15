@@ -53,7 +53,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
         // Parameters
         
         let userAgent = call.getString("userAgent", "");
-        let persistSession = call.getBool("persistSession", false);
+        let shouldPersistSession = call.getBool("persistSession", false);
         
         // Proxy Settings
         // PROXY SETTINGS ARE NOT SETTABLE ON WKWEBVIEW
@@ -70,41 +70,23 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        // WebView Configuration
-        
-        let config = WKWebViewConfiguration()
-        
         // Create WebView and add to base WebView
         
         DispatchQueue.main.async {
             
-            // Load persistence config
-            if persistSession {
-                if let (processPool, dataStore) = ScrapWebView.shared.getPersistentStorageConfig(forKey: id) {
-                    // Use existing process pool and dataStore
-                    config.processPool = processPool
-                    config.websiteDataStore = dataStore
-                } else {
-                    // Create persistent process pool and dataStore
-                    let (processPool, dataStore) = ScrapWebView.shared.createPersistentStorageConfig(forKey: id)
-                    config.processPool = processPool
-                    config.websiteDataStore = dataStore
-                }
-            } else {
-                config.processPool = WKProcessPool()
-                config.websiteDataStore = .nonPersistent()
-            }
-            
-            // Instantiate WebView
-            let webView = TestWebView(frame: baseWebView.frame, configuration: config)
-            webView.customUserAgent = userAgent
-            webView.isHidden = !shouldShow
-            
             // Add reference to dictionary
-            ScrapWebView.shared.addWebView(withKey: id, webView: webView)
+            let webView = ScrapWebView.shared.createWebView(
+                forKey: id,
+                frame: baseWebView.frame,
+                persistSession: shouldPersistSession
+            )
+            
+            webView.customUserAgent = userAgent
             
             // Add to UI
-            baseWebView.addSubview(webView)
+            if shouldShow {
+                baseWebView.addSubview(webView)
+            }
             
             call.resolve();
         }
@@ -150,8 +132,7 @@ public class ScrapWebviewPlugin: CAPPlugin {
             return
         }
         
-        ScrapWebView.shared.removeWebView(forKey: id)
-        ScrapWebView.shared.addWebView(withKey: newId, webView: webView)
+        ScrapWebView.shared.replaceWebViewId(forKey: id, newKey: newId)
         
         call.resolve();
     }
