@@ -20,6 +20,7 @@
 		B93DC5CA28D3AC8200517F25 /* WebViewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93DC5C928D3AC8200517F25 /* WebViewManager.swift */; };
 		B93DC5D028D3DB1F00517F25 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93DC5CF28D3DB1F00517F25 /* WebViewController.swift */; };
 		B93DC5D228D3DDD100517F25 /* WebViewControllerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93DC5D128D3DDD100517F25 /* WebViewControllerManager.swift */; };
+		B96F042D28D4A66A008E99E3 /* WebViewScriptManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96F042C28D4A66A008E99E3 /* WebViewScriptManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		B93DC5C928D3AC8200517F25 /* WebViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewManager.swift; sourceTree = "<group>"; };
 		B93DC5CF28D3DB1F00517F25 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		B93DC5D128D3DDD100517F25 /* WebViewControllerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewControllerManager.swift; sourceTree = "<group>"; };
+		B96F042C28D4A66A008E99E3 /* WebViewScriptManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewScriptManager.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -131,6 +133,7 @@
 				B93DC5C928D3AC8200517F25 /* WebViewManager.swift */,
 				B93DC5CF28D3DB1F00517F25 /* WebViewController.swift */,
 				B93DC5D128D3DDD100517F25 /* WebViewControllerManager.swift */,
+				B96F042C28D4A66A008E99E3 /* WebViewScriptManager.swift */,
 			);
 			path = WebView;
 			sourceTree = "<group>";
@@ -253,6 +256,7 @@
 				B93DC5D028D3DB1F00517F25 /* WebViewController.swift in Sources */,
 				849B603A2852552D00F7AF38 /* ScrapWebviewPlugin.m in Sources */,
 				B93DC5D228D3DDD100517F25 /* WebViewControllerManager.swift in Sources */,
+				B96F042D28D4A66A008E99E3 /* WebViewScriptManager.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

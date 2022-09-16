@@ -274,25 +274,44 @@ public class ScrapWebviewPlugin: CAPPlugin {
      * If the script didn't end in the time given by timeout (ms), call.reject("ScrapingTimeoutError") must be called
      */
     @objc public func evaluateScript(_ call: CAPPluginCall) {
+        let id = call.getString("id", "");
         
-        // let id = call.getString("id", null);
-        // let script = call.getString("script", "");
-        // let timeout = call.getInt("timeout", 1000);
-        // let params = call.getString("params", "");
-        // if (script == "") {
-        // 		call.reject("You must provide a Javascript string to evaluate.");
-        // }
-        // let toExecute = "(" + script + ")(" + params + ").then(result => ({ result })).catch(error => { console.log(error); return { error: { name: error.name, message: error.message, stack: error.stack } }; })";
+        guard let webView = WebViewManager.shared.getWebView(forKey: id) else {
+            call.reject("No WebView with id: '\(id)'")
+            return
+        }
         
+        guard let script = call.getString("script") else {
+            call.reject("You must provide a Javascript string to evaluate.");
+            return
+        }
         
+        let params = call.getString("params", "");
+        let timeout = call.getInt("timeout", 1000);
         
+        /* let toExecute = "(" + script + ")(" + params + ").then(result => `${JSON.stringify(result)}`).catch(err => `${JSON.stringify(err)}`)"; */
+        let jsFunction = "() => {return \"Test string\"}"
+        let toExecute = "setTimeout(\(jsFunction), \(timeout))"
         
-        // @todo
-        
-        let result = "";
-        
-        call.resolve(["result": result ]);
-        
+        DispatchQueue.main.async {
+            WebViewScriptManager.shared.runJavascriptWithCallback(for: webView, id: id, script: "", timeout: Double(timeout)) { result in
+                print(result)
+            }
+            
+            /*webView.evaluateJavaScript(toExecute) { result, error in
+                print("Result: \(result)")
+                print("Error: \(error)")
+                /*if let error = error {
+                 call.resolve(["error": ["name": "JSError", "message": error.localizedDescription, "stack": error] ]);
+                 }
+                 if let result = result {
+                 
+                 }*/
+                let result = "";
+                
+                call.resolve(["result": result ]);
+            }*/
+        }
     }
     
     /**
