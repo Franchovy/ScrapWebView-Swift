@@ -15,7 +15,7 @@ class WebViewScriptManager: NSObject, WKScriptMessageHandler {
     enum ExecuteJSError: Error {
         case TimeoutError
         case CodeError(String)
-        case JavascriptError(Error)
+        case JavascriptError(String)
     }
     
     var callbacks: [String: ((Result<Any,Error>) -> Void)?] = [:]
@@ -30,7 +30,7 @@ class WebViewScriptManager: NSObject, WKScriptMessageHandler {
         callback(result)
     }
     
-    public func runJavascriptWithCallback(for webView: WKWebView, id: String, script jsScript: String, timeout: Double, callback: @escaping(Result<Any,Error>) -> Void) {
+    public func runJavascriptWithCallback(for webView: WKWebView, id: String, script: String, params scriptParams: String, timeout: Double, callback: @escaping(Result<Any,Error>) -> Void) {
         
         // Set callback into callback dictionary
         let scriptName = id + String(describing: Int.random(in: 0...99999))
@@ -38,24 +38,39 @@ class WebViewScriptManager: NSObject, WKScriptMessageHandler {
         
         webView.configuration.userContentController.add(self, name: scriptName)
         
-        let testJSScript = """
+        let handleResultJS = """
+            (result) =>
         window.webkit.messageHandlers.\(scriptName).postMessage(
-            "Does this works?"
-        );
+             { result }
+        )
         """
         
-        // Main JS execution
+        let handleErrorJS = """
+        (error) =>
+            window.webkit.messageHandlers.\(scriptName).postMessage(
+                {
+                    error: {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    }
+                }
+            )
+        """
+        
+        let toExecute = "(" + script + ")(" + scriptParams + ").then(\(handleResultJS)).catch(\(handleErrorJS))";
+        
+        print("JS to execute: \n\(toExecute)")
+        
         DispatchQueue.main.async {
             
-            webView.evaluateJavaScript(testJSScript) { _, error in
-                // Callback upon failure to execute this javascript code, e.g. invalid JS
-                if let error = error {
-                    self.executeCallback(for: scriptName, result: .failure(ExecuteJSError.CodeError(error.localizedDescription)))
-                }
-            }
+            // Main JS execution
+            webView.evaluateJavaScript(toExecute)
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
-                // Callback upon timeout
+            // Callback upon timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout / 1000) {
+                webView.evaluateJavaScript("throw new Error()")
+                
                 self.executeCallback(for: scriptName, result: .failure(ExecuteJSError.TimeoutError))
             }
         }
@@ -63,14 +78,20 @@ class WebViewScriptManager: NSObject, WKScriptMessageHandler {
     
     func userContentController(_ userContentController: WKUserContentController,
                                didReceive message: WKScriptMessage) {
-        print("Script execution successful for \(message.name). Message: \(message.body)")
+        guard let dict = message.body as? [String: Any] else {
+            return
+        }
         
-        let dict = message.body as? [String: Any]
-        
-        self.executeCallback(for: message.name, result: .success(dict ?? ""))
-
-        // TODO: Error?
-        
+        if dict.keys.contains("result"), let result = dict["result"] {
+            
+            self.executeCallback(for: message.name, result: .success(result))
+            
+        } else if dict.keys.contains("error"), let error = dict["error"] {
+            
+            let data = try! JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+            let errorJSONString = String(data: data, encoding: String.Encoding.utf8) ?? ""
+            
+            self.executeCallback(for: message.name, result: .failure(ExecuteJSError.JavascriptError(errorJSONString)))
+        }
     }
-    
 }

@@ -289,13 +289,27 @@ public class ScrapWebviewPlugin: CAPPlugin {
         let params = call.getString("params", "");
         let timeout = call.getInt("timeout", 1000);
         
-        /* let toExecute = "(" + script + ")(" + params + ").then(result => `${JSON.stringify(result)}`).catch(err => `${JSON.stringify(err)}`)"; */
-        let jsFunction = "() => {return \"Test string\"}"
-        let toExecute = "setTimeout(\(jsFunction), \(timeout))"
-        
         DispatchQueue.main.async {
-            WebViewScriptManager.shared.runJavascriptWithCallback(for: webView, id: id, script: "", timeout: Double(timeout)) { result in
-                print(result)
+            WebViewScriptManager.shared.runJavascriptWithCallback(for: webView, id: id, script: script, params: params, timeout: Double(timeout)) { result in
+                switch result {
+                case .success(let result):
+                    call.resolve(["result": result ]);
+                case .failure(let error as WebViewScriptManager.ExecuteJSError):
+                    // TODO: expected error patterns
+                    print(error)
+                    
+                    switch error {
+                    case .JavascriptError(let errorStr):
+                        call.reject(errorStr)
+                        break
+                    case .TimeoutError:
+                        call.reject("ScrapingTimeoutError")
+                    case .CodeError(let error):
+                        fatalError("Internal error: \(error)")
+                    }
+                case .failure(_):
+                    fatalError()
+                }
             }
             
             /*webView.evaluateJavaScript(toExecute) { result, error in
