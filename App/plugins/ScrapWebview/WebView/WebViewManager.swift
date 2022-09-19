@@ -15,7 +15,6 @@ class WebViewManager {
     
     private var webViewsDictionary: [String: WKWebView] = [:]
     private var viewControllers: [String: UIViewController?] = [:]
-    private var persistentStorage: [String: (WKProcessPool, WKWebsiteDataStore)] = [:]
     
     // MARK: - Public Methods
     
@@ -62,42 +61,11 @@ class WebViewManager {
         
         // Load persistence config
         if persistSession {
-            if let (processPool, dataStore) = WebViewManager.shared.getPersistentStorageConfig(forKey: key) {
-                // Use existing process pool and dataStore
-                config.processPool = processPool
-                config.websiteDataStore = dataStore
-            } else {
-                // Create persistent process pool and dataStore
-                let (processPool, dataStore) = WebViewManager.shared.createPersistentStorageConfig(forKey: key)
-                config.processPool = processPool
-                config.websiteDataStore = dataStore
-            }
+            config.websiteDataStore = .default()
         } else {
-            config.processPool = WKProcessPool()
             config.websiteDataStore = .nonPersistent()
         }
         
         return config
-    }
-    
-    // WKProcessPool and WKWebsiteDataStore management
-    
-    private func getPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore)? {
-        if persistentStorage.keys.contains(key) {
-            return persistentStorage[key]
-        }
-        
-        return nil
-    }
-    
-    private func createPersistentStorageConfig(forKey key: String) -> (WKProcessPool, WKWebsiteDataStore) {
-        if persistentStorage.keys.contains(key) {
-            fatalError("Persistent storage for this key already exists, use 'getPersistentStorageConfig(forKey: \(key)' instead")
-        }
-        
-        let persistentStore = (WKProcessPool(), WKWebsiteDataStore.nonPersistent())
-        persistentStorage[key] = persistentStore
-        
-        return persistentStore
     }
 }
